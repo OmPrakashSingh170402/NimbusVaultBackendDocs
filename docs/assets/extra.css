@@ -1,0 +1,46 @@
+/* Brand palette derived from docs/assets/logo.jpg (#277383). */
+
+:root {
+  --nv-teal:        #277383;
+  --nv-teal-light:  #5da3b3;
+  --nv-teal-dark:   #1a5260;
+  --nv-teal-soft:   rgba(39, 115, 131, 0.12);
+}
+
+/* Light scheme overrides */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:          var(--nv-teal);
+  --md-primary-fg-color--light:   var(--nv-teal-light);
+  --md-primary-fg-color--dark:    var(--nv-teal-dark);
+  --md-primary-bg-color:          #ffffff;
+  --md-primary-bg-color--light:   rgba(255, 255, 255, 0.7);
+
+  --md-accent-fg-color:           var(--nv-teal-dark);
+  --md-accent-fg-color--transparent: var(--nv-teal-soft);
+  --md-accent-bg-color:           #ffffff;
+  --md-accent-bg-color--light:    rgba(255, 255, 255, 0.7);
+
+  --md-typeset-a-color:           var(--nv-teal-dark);
+}
+
+/* Dark scheme overrides */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:          var(--nv-teal-dark);
+  --md-primary-fg-color--light:   var(--nv-teal);
+  --md-primary-fg-color--dark:    #0f3b46;
+  --md-primary-bg-color:          #ffffff;
+
+  --md-accent-fg-color:           var(--nv-teal-light);
+  --md-accent-fg-color--transparent: rgba(93, 163, 179, 0.18);
+
+  --md-typeset-a-color:           var(--nv-teal-light);
+}
+
+/* Logo container — give the JPEG some breathing room since it has a white background */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 2rem;
+  border-radius: 4px;
+  background: #ffffff;
+  padding: 2px;
+}

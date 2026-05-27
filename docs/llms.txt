@@ -1,0 +1,65 @@
+# NimbusVault Backend
+
+> Enterprise content management platform built with Django 5.2 + DRF. Multi-tenant document management, workflow automation, reporting, integrations with SharePoint, Power BI, Azure, Keycloak. Containerised; Celery + RabbitMQ for async work.
+
+This file follows the [llms.txt](https://llmstxt.org/) convention. It is a manifest of links to the most useful pages for an LLM ingesting this codebase's design.
+
+## Architecture
+
+- [Architecture overview](architecture/overview.md): layers top to bottom, who owns what, where each concern lives.
+- [Request lifecycle](architecture/request-lifecycle.md): middleware stack, URL routing, multi-tenancy, error handling.
+- [Orchestrators](architecture/orchestrators.md): workflow framework, rollback, composition, registry.
+- [Data layer](architecture/data-layer.md): the ORM-isolation rule. **Required reading.**
+- [Plugins](architecture/plugins.md): how plugins are loaded, current active set, when to use one.
+- [Async & deployment](architecture/async-and-deployment.md): Celery queues, worker tasks, the three scheduling mechanisms (root `crontab` via supercronic, plugin `cronjobs` via supercronic, Celery Beat with `DatabaseScheduler`), tenant routing inside scheduled jobs, container entrypoints.
+- [Configuration](architecture/configuration.md): `VaultSettings.json` schema and feature flags.
+
+## API Creation Contract
+
+- [The contract](api-guide/contract.md): the seven steps every new endpoint must follow, plus the hard rules and anti-patterns. **Required reading before writing any new API.**
+- [Worked example](api-guide/walkthrough.md): full end-to-end implementation of a `Bookmark` domain.
+- [Good practices](api-guide/good-practices.md): N+1 avoidance with `select_related`/`prefetch_related`, bulk operations, memoization, caching, indexes, pagination, `assertNumQueries`, ID-passing to Celery, and external-integration rules for Gitea / PyGit / Elasticsearch / SSE.
+- [Review checklist](api-guide/review-checklist.md): per-layer checklist for PR reviewers.
+
+## Plugins
+
+- [Plugins overview](plugins/overview.md): how the two loading mechanisms work (URL include + pluggy hook registration), plugin layout, configuration, and the "plugin vs core" decision rule.
+- [Plugin development guide](plugins/development-guide.md): step-by-step recipe for adding a new plugin end-to-end — model + service + BLL + orchestrator + pluggy hook impl + serializer + view + URL + activation.
+- [Active plugins](plugins/active-plugins.md): catalogue of every plugin currently in the repo (LLM_Plugin, Nimbus_Plugin, SharePoint, PowerBI, TeamsPlugin, HDFCUAMPlugin, AldermorePlugin) — purpose, folder, endpoint surface.
+
+## Reference
+
+- [Key files](reference/key-files.md): paths and one-line descriptions for every important file.
+- [Conventions](reference/conventions.md): naming, headers, errors, imports, logging, type hints.
+
+## The single most important rule
+
+Every layer above the data layer is forbidden from touching the Django ORM directly. ORM access is concentrated in one file per domain: `bll/<Domain>/service.py`. That file exposes only `create`, `get`, `filter`, `update`, `delete`, `bulk_create`, `bulk_update`, `bulk_delete`. No business logic, no permission checks, no audit-log writes inside `service.py`. All of that lives in `bll/<Domain>/{HelperFunctions, GetApisbll, PostApisbll}.py` and in domain orchestrators under `Orchestrators/<Domain>Orchestrators/`.
+
+## API call graph (canonical)
+
+```
+URL (VaultManagement/urls/<Domain>.py)
+  → registered in NimbusVault/urls.py (only if new module)
+    → View (VaultManagement/views/<Domain>.py)
+      → Serializer (VaultManagement/serializers/<Domain>.py)
+        → Orchestrator (Orchestrators/<Domain>Orchestrators/)
+          → other orchestrators (cross-domain)
+            → bll/<Domain>/HelperFunctions.py (pure helpers)
+              → bll/<Domain>/GetApisbll.py | PostApisbll.py
+                → bll/<Domain>/service.py  ← only place Model.objects.* is called
+                  → VaultModels/models/<Domain>.py
+```
+
+## Quick facts
+
+- Auth scheme: `Authorization: JWT <token>` (NOT `Bearer`).
+- Tenant header: `Org: <slug>` — required on every non-public endpoint; routes the request to the tenant database.
+- Swagger: `/vault/api/swagger/`.
+- Metrics: `/metrics` (gated by `RestrictMetricPath`).
+- All endpoints mounted under `/vault/`.
+- Python 3.10. Django 5.2. DRF.
+- Celery queues: `high`, `medium`, `low`, `bulk`, `duckdb`.
+- Errors: `from VaultErrors.BackendErrors import errors` — use `errors.bad_request.*`.
+- View base class: `NimbusVaultConstants.CommonConstants.CommonConstants.ModelAPIView`.
+- Common helper: `flatten_serializer_errors(serializer.errors)`.

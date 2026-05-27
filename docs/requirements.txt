@@ -1,0 +1,6 @@
+mkdocs==1.6.1
+mkdocs-material==9.5.49
+# Bumped from 10.12 to fix AttributeError in pygments HtmlFormatter
+# when 'filename' is None — see pymdown-extensions issue #2470.
+pymdown-extensions==10.14.3
+pygments==2.18.0
